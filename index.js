@@ -98,15 +98,15 @@ rp({
         return createWorker(token, w);
       })
     })).then(() => {
-      return fetchWorker(workers.length).then(res => {
+      return fetchWorker(1).then(({recordsTotal: total}) => {
+        fetchWorker(total).then(({data: workers}) => {
+          const header = Object.keys(workers[0]);
+          const headerString = header.join(";");
 
-        const workers = res.data;
-        const header = Object.keys(workers[0]);
-        const headerString = header.join(";");
-
-        fs.writeFileSync('./worker.csv', [headerString].concat(workers.map(d =>
-          `${header.map(h => d[h]).join(";")}`)
-        ).join("\n"), 'utf-8');
+          fs.writeFileSync('./worker.csv', [headerString].concat(workers.map(d =>
+            `${header.map(h => d[h]).join(";")}`)
+          ).join("\n"), 'utf-8');
+        });
       });
     });
   });
