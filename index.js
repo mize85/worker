@@ -48,11 +48,10 @@ function getEditToken(id) {
 
 function editWorker(_token, worker) {
 
-  const payload = {...worker, _token};
+  const payload = {...worker, _token, _method: 'PUT'};
 
   return rp({
     method: 'POST',
-    _method: 'PUT',
     jar: true,
     followAllRedirects: true,
     uri: `https://saisonarbeit2020.bauernverband.de/harvest-worker/${worker.id}`,
