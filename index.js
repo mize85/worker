@@ -33,6 +33,38 @@ function fetchWorker(length) {
   })
 }
 
+function getEditToken(id) {
+  return rp({
+    method: 'GET',
+    jar: true,
+    uri: `https://saisonarbeit2020.bauernverband.de/harvest-worker/${id}/edit`
+  }).then(body => {
+    const $ = cheerio.load(body);
+    const _token = $('input[name="_token"]').attr('value');
+    console.log("EDIT TOKEN: ", _token);
+    return _token;
+  });
+}
+
+function editWorker(_token, worker) {
+
+  const payload = {...worker, _token};
+
+  return rp({
+    method: 'POST',
+    _method: 'PUT',
+    jar: true,
+    followAllRedirects: true,
+    uri: `https://saisonarbeit2020.bauernverband.de/harvest-worker/${worker.id}`,
+    formData: payload
+  }).then(body => {
+    const $ = cheerio.load(body);
+    const text = $('div.alert').text();
+    console.log("RESPONSE TEXT: ", text);
+    return text;
+  });
+}
+
 function getCreateToken() {
 
   return rp({
@@ -50,6 +82,7 @@ function getCreateToken() {
     return _token;
   });
 }
+
 
 function createWorker(_token, worker) {
 
@@ -94,9 +127,15 @@ rp({
     }
   }).then(() => {
     return Promise.all(workers.map(w => {
-      return getCreateToken().then(token => {
-        return createWorker(token, w);
-      })
+      if(w.id){
+        return getEditToken(w.id).then(token => {
+          return editWorker(token, w);
+        });
+      } else {
+        return getCreateToken().then(token => {
+          return createWorker(token, w);
+        });
+      }
     })).then(() => {
       return fetchWorker(1).then(({recordsTotal: total}) => {
         fetchWorker(total).then(({data: workers}) => {
