@@ -20,9 +20,11 @@ const BASE_URL = "https://saisonarbeit2020.bauernverband.de";
 const workbook = XLSX.readFile('worker.xlsx');
 const sheet_name_list = workbook.SheetNames;
 
-const harvestWorkers = XLSX.utils.sheet_to_json(workbook.Sheets[sheet_name_list[0]], {raw: false});
-const returningHarvestWorkers = XLSX.utils.sheet_to_json(workbook.Sheets[sheet_name_list[1]], {raw: false});
-const returnTrips = XLSX.utils.sheet_to_json(workbook.Sheets[sheet_name_list[2]], {raw: false});
+const readSheet = (num) => XLSX.utils.sheet_to_json(workbook.Sheets[sheet_name_list[num]], {raw: false});
+
+const harvestWorkers = readSheet(0);
+const returningHarvestWorkers = readSheet(1);
+const returnTrips = readSheet(2);
 
 console.log("=== harvestWorkers ===");
 console.log(harvestWorkers);
@@ -65,9 +67,7 @@ function getToken(uri) {
 }
 
 function editData(_token, data, uri) {
-
   const payload = {...data, _token, _method: 'PUT'};
-
   return rp({
     method: 'POST',
     jar: true,
@@ -82,6 +82,20 @@ function editData(_token, data, uri) {
   });
 }
 
+const writeData = ({data}, name) => {
+  if (data && data.length > 0) {
+    const header = Object.keys(data[0]);
+    const headerString = header.join(";");
+
+    fs.writeFileSync(`./${name}.csv`, [headerString].concat(data.map(d =>
+      `${header.map(h => d[h]).join(";")}`)
+    ).join("\n"), 'utf-8');
+  } else {
+    console.error(`No data received for: ${name}`);
+  }
+  return Promise.resolve();
+};
+
 function processHarvestWorker() {
   return Promise.all(harvestWorkers.map(w => {
     if (w.id) {
@@ -95,14 +109,7 @@ function processHarvestWorker() {
     }
   })).then(() => {
     return fetchData(FETCH_FUTURE_HARVEST_WORKER(1)).then(({recordsTotal: total}) => {
-      fetchData(FETCH_FUTURE_HARVEST_WORKER(total)).then(({data: workers}) => {
-        const header = Object.keys(workers[0]);
-        const headerString = header.join(";");
-
-        fs.writeFileSync('./harvest-worker.csv', [headerString].concat(workers.map(d =>
-          `${header.map(h => d[h]).join(";")}`)
-        ).join("\n"), 'utf-8');
-      });
+      fetchData(FETCH_FUTURE_HARVEST_WORKER(total)).then(d => writeData(d, 'harvest-worker'));
     });
   });
 }
@@ -120,14 +127,7 @@ function processReturningHarvestWorker() {
     }
   })).then(() => {
     return fetchData(FETCH_CURRENT_HARVEST_WORKER(1)).then(({recordsTotal: total}) => {
-      fetchData(FETCH_CURRENT_HARVEST_WORKER(total)).then(({data: workers}) => {
-        const header = Object.keys(workers[0]);
-        const headerString = header.join(";");
-
-        fs.writeFileSync('./returning-harvest-worker.csv', [headerString].concat(workers.map(d =>
-          `${header.map(h => d[h]).join(";")}`)
-        ).join("\n"), 'utf-8');
-      });
+      fetchData(FETCH_CURRENT_HARVEST_WORKER(total)).then(d => writeData(d, 'returning-harvest-worker'));
     });
   });
 }
@@ -145,14 +145,7 @@ function processReturnTrip() {
     }
   })).then(() => {
     return fetchData(FETCH_RETURN_TRIP_DATA(1)).then(({recordsTotal: total}) => {
-      fetchData(FETCH_RETURN_TRIP_DATA(total)).then(({data: workers}) => {
-        const header = Object.keys(workers[0]);
-        const headerString = header.join(";");
-
-        fs.writeFileSync('./return-trip.csv', [headerString].concat(workers.map(d =>
-          `${header.map(h => d[h]).join(";")}`)
-        ).join("\n"), 'utf-8');
-      });
+      fetchData(FETCH_RETURN_TRIP_DATA(total)).then(d => writeData(d, 'return-trip'));
     });
   });
 }
