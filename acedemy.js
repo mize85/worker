@@ -51,7 +51,7 @@ async function listUsers() {
   });
 }
 
-async function showUser(id){
+async function showUser(id) {
   const uri = BASE_URL + `/viewPerson.do?id=${id}`;
   return rp({
     method: 'GET',
@@ -62,7 +62,7 @@ async function showUser(id){
   });
 }
 
-function getUsersFromHtml(html){
+function getUsersFromHtml(html) {
   const $ = cheerio.load(html);
   const table = $('.tableList');
   return $(table).find('tbody > tr').map((i, row) => ({
@@ -73,17 +73,17 @@ function getUsersFromHtml(html){
   })).get()
 }
 
-function getId(text){
-  if(text){
+function getId(text) {
+  if (text) {
     const matches = text.match(/&id=(\d+)/);
-    if(matches && matches.length){
+    if (matches && matches.length) {
       return matches[1];
     }
   }
   return null;
 }
 
-function getTrainingsFromHtml(html){
+function getTrainingsFromHtml(html) {
   const $ = cheerio.load(html);
   const table = $('.tableTrainingHeading').first().parent();
 
@@ -96,23 +96,32 @@ function getTrainingsFromHtml(html){
   })).get().filter(t => t.name !== '')
 }
 
+function writeCsv(users) {
+  const header = ["iduser", "lastName", "firstName", "email", "idtraining", "name", "status", "ergebnis", "datum"];
+  const headerString = header.join(";");
+  const data = [headerString];
+
+  for (const user of users) {
+    for (const training of user.trainings) {
+      data.push(`${user.id};${user.lastName};${user.firstName};${user.email};${training.id};${training.name};${training.status};${training.ergebnis};${training.datum}`)
+    }
+  }
+  fs.writeFileSync(`./trainings.csv`, data.join("\n"), 'utf-8');
+}
+
 
 // START
 async function main() {
   await login();
-
   // needs to be called first :shrug:
   await listUsers();
   const usersHtml = await fullUserList();
   const users = getUsersFromHtml(usersHtml)
-
   for (const u of users) {
     const detailHtml = await showUser(u.id);
     u.trainings = getTrainingsFromHtml(detailHtml);
   }
-
-  const json = JSON.stringify(users, null, 2);
-  fs.writeFileSync('./trainings.json', json);
+  writeCsv(users);
 }
 
 main();
