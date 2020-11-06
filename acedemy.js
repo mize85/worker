@@ -86,9 +86,20 @@ function getId(text) {
 function getTrainingsFromHtml(html) {
   const $ = cheerio.load(html);
   const table = $('.tableTrainingHeading').first().parent();
+  const tableLogin = $('table.viewDataTable')[1];
+
+  const tds = $(tableLogin).find("tr td");
+
+  const username = $(tds[1]).text().trim();
+  const firstLogin = $(tds[5]).text().trim();
+  const lastLogin = $(tds[7]).text().trim();
+
 
   return $(table).find('tbody > tr:not(.viewDataTableDetailRow)').map((i, row) => ({
-    id: getId($(row).find('td:nth-of-type(3) > a').attr("onclick")), // "Gogogo",//callAction('viewCourse.do', '&id=691', 'LMSContent'); ->
+    id: getId($(row).find('td:nth-of-type(3) > a').attr("onclick")),
+    username,
+    firstLogin,
+    lastLogin,
     name: $(row).find('td:nth-of-type(3)').text().trim(),
     status: $(row).find('td:nth-of-type(4)').text().trim(),
     ergebnis: $(row).find('td:nth-of-type(5)').text().trim().replace(/(?:\t|\n)/g, ''),
@@ -97,13 +108,13 @@ function getTrainingsFromHtml(html) {
 }
 
 function writeCsv(users) {
-  const header = ["iduser", "lastName", "firstName", "email", "idtraining", "name", "status", "ergebnis", "datum"];
+  const header = ["iduser", "lastName", "firstName", "email", "username", "firstLogin", "lastLogin", "idtraining", "name", "status", "ergebnis", "datum"];
   const headerString = header.join(";");
   const data = [headerString];
 
   for (const user of users) {
     for (const training of user.trainings) {
-      data.push(`${user.id};${user.lastName};${user.firstName};${user.email};${training.id};${training.name};${training.status};${training.ergebnis};${training.datum}`)
+      data.push(`${user.id};${user.lastName};${user.firstName};${user.email};${training.username};${training.firstLogin};${training.lastLogin};${training.id};${training.name};${training.status};${training.ergebnis};${training.datum}`)
     }
   }
   fs.writeFileSync(`./trainings.csv`, data.join("\n"), 'utf-8');
